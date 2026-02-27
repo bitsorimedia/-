@@ -7,20 +7,21 @@
   --font-mono: "JetBrains Mono", monospace;
   
   --color-gold: #D4AF37;
-  --color-dark: #0A0A0A;
+  --color-light: #FDFDFD;
+  --color-ink: #0A0A0A;
 }
 
 @layer base {
   body {
-    @apply bg-dark text-white font-sans antialiased;
+    @apply bg-light text-ink font-sans antialiased;
   }
 }
 
 .glass {
-  @apply bg-white/5 backdrop-blur-lg border border-white/10;
+  @apply bg-white/80 backdrop-blur-lg border border-black/5 shadow-sm;
 }
 
 .text-gradient {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-white to-white/50;
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-ink to-ink/60;
 }
 
