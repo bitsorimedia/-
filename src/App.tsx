@@ -559,16 +559,37 @@ const WorkDetail = () => {
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-12">{item.title}</h1>
         
         <div className="space-y-8 mb-20">
+          {item.video_url && (
+            <div className="aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl">
+              {item.video_url.includes('youtube.com') || item.video_url.includes('youtu.be') ? (
+                <iframe 
+                  src={`https://www.youtube.com/embed/${item.video_url.includes('v=') ? item.video_url.split('v=')[1].split('&')[0] : item.video_url.split('/').pop()}`}
+                  className="w-full h-full"
+                  allowFullScreen
+                />
+              ) : item.video_url.includes('vimeo.com') ? (
+                <iframe 
+                  src={`https://player.vimeo.com/video/${item.video_url.split('/').pop()}`}
+                  className="w-full h-full"
+                  allowFullScreen
+                />
+              ) : (
+                <a href={item.video_url} target="_blank" rel="noreferrer" className="flex items-center justify-center h-full text-white hover:underline">
+                  외부 영상 보기 <ExternalLink className="ml-2" size={20} />
+                </a>
+              )}
+            </div>
+          )}
           {item.images.map((img, idx) => (
-            <div key={img.id} className="aspect-video rounded-3xl overflow-hidden bg-black/5">
+            <div key={img.id} className="rounded-3xl overflow-hidden bg-black/5">
               {img.type === 'video' ? (
                 <video 
                   src={img.url} 
                   controls 
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto block"
                 />
               ) : (
-                <img src={img.url} className="w-full h-full object-cover" alt={`${item.title} - ${idx + 1}`} />
+                <img src={img.url} className="w-full h-auto block" alt={`${item.title} - ${idx + 1}`} />
               )}
             </div>
           ))}
@@ -727,6 +748,7 @@ const Admin = () => {
       });
       
       console.log(`Upload response status: ${response.status}`);
+      
       if (response.ok) {
         console.log("Upload successful");
         alert('프로젝트가 성공적으로 저장되었습니다.');
@@ -735,9 +757,18 @@ const Admin = () => {
         setPreviews([]);
         fetchItems();
       } else {
-        const err = await response.json();
-        console.error("Upload failed:", err);
-        alert(`저장 실패: ${err.error || '알 수 없는 오류'}`);
+        if (response.status === 413) {
+          alert('파일 용량이 너무 큽니다. 서버 제한(약 50MB~100MB)을 초과했을 수 있습니다. 더 작은 파일로 시도하거나 유튜브 링크를 이용해주세요.');
+        } else {
+          try {
+            const err = await response.json();
+            console.error("Upload failed:", err);
+            alert(`저장 실패: ${err.error || '알 수 없는 오류'}`);
+          } catch (e) {
+            console.error("Failed to parse error JSON:", e);
+            alert(`저장 실패 (상태 코드: ${response.status}). 서버 연결에 문제가 있거나 파일이 너무 클 수 있습니다.`);
+          }
+        }
       }
     } catch (error: any) {
       console.error("Save error:", error);
@@ -930,8 +961,16 @@ const Admin = () => {
                     </select>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">외부 영상 링크 (YouTube / Vimeo - 선택사항)</label>
+                  <input name="video_url" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" placeholder="https://www.youtube.com/watch?v=..." />
+                </div>
+
                 <div className="space-y-4">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-ink/40">Project Images & Videos (MP4 지원)</label>
+                  <div className="flex justify-between items-end">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-ink/40">Project Images & Videos (MP4 지원)</label>
+                    <span className="text-[10px] text-ink/30 font-medium">최대 500MB 허용</span>
+                  </div>
                   
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
                     {previews.map((preview, idx) => (
@@ -964,7 +1003,7 @@ const Admin = () => {
                     </label>
                   </div>
                   
-                  <p className="text-[10px] text-ink/30">* 여러 장 선택 가능 (한 장당 2MB 미만 권장)</p>
+                  <p className="text-[10px] text-ink/30">* 여러 장 선택 기능(한 장당 500MB 미만 권장)</p>
                 </div>
                 <button 
                   disabled={isSaving}

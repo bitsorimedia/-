@@ -81,7 +81,7 @@ const storage = multer.diskStorage({
 const upload = multer({ 
   storage: storage,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit
+    fileSize: 500 * 1024 * 1024, // 500MB limit
   }
 });
 
@@ -112,8 +112,8 @@ if (rowCount.count === 0) {
 
 async function startServer() {
   const app = express();
-  app.use(express.json({ limit: '100mb' }));
-  app.use(express.urlencoded({ limit: '100mb', extended: true }));
+  app.use(express.json({ limit: '500mb' }));
+  app.use(express.urlencoded({ limit: '500mb', extended: true }));
   app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
   // API Routes
@@ -153,7 +153,19 @@ async function startServer() {
     }
   });
 
-  app.post("/api/portfolio", upload.array("images"), (req, res) => {
+  app.post("/api/portfolio", (req, res, next) => {
+    upload.array("images")(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(413).json({ error: "파일 용량이 너무 큽니다. (최대 500MB)" });
+        }
+        return res.status(400).json({ error: err.message });
+      } else if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      next();
+    });
+  }, (req, res) => {
     try {
       console.log("Received project upload request");
       const { title, category, video_url = null, problem = null, solution = null, result = null, password } = req.body;
@@ -164,11 +176,11 @@ async function startServer() {
       }
       
       const files = req.files as Express.Multer.File[];
-      console.log(`Received ${files?.length || 0} files`);
+      console.log(`Received ${files?.length || 0} files and video_url: ${video_url}`);
       
-      if (!files || files.length === 0) {
-        console.log("Upload failed: No files provided");
-        return res.status(400).json({ error: "At least one file is required" });
+      if ((!files || files.length === 0) && !video_url) {
+        console.log("Upload failed: No files or video_url provided");
+        return res.status(400).json({ error: "이미지/영상 파일 또는 외부 영상 링크가 필요합니다." });
       }
 
       // We check if thumbnail column exists in the actual table to avoid errors
