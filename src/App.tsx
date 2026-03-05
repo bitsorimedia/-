@@ -937,10 +937,22 @@ const Admin = () => {
     }).then(res => res.json()).then(setInquiries);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === '1234') setIsAuth(true);
-    else alert('Wrong password');
+    try {
+      const response = await fetch('/api/admin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      if (response.ok) {
+        setIsAuth(true);
+      } else {
+        alert('비밀번호가 틀렸습니다.');
+      }
+    } catch (error) {
+      alert('로그인 중 오류가 발생했습니다.');
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -1215,6 +1227,22 @@ const Admin = () => {
                     </select>
                   </div>
                 </div>
+                
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">과제 및 목표 (Problem)</label>
+                  <textarea name="problem" rows={2} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" placeholder="어떤 문제를 해결하고자 했나요?" />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">해결 과정 및 전략 (Solution)</label>
+                  <textarea name="solution" rows={4} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" placeholder="어떤 전략으로 접근했나요?" />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">성과 및 결과 (Result)</label>
+                  <input name="result" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" placeholder="어떤 성과를 거두었나요?" />
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-ink/40">외부 영상 링크 (YouTube / Vimeo - 선택사항)</label>
                   <input name="video_url" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" placeholder="https://www.youtube.com/watch?v=..." />
@@ -1306,6 +1334,21 @@ const Admin = () => {
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-ink/40">외부 영상 링크 (YouTube / Vimeo - 선택사항)</label>
                   <input name="video_url" defaultValue={editingItem.video_url || ''} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" placeholder="https://www.youtube.com/watch?v=..." />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">과제 및 목표 (Problem)</label>
+                  <textarea name="problem" defaultValue={editingItem.problem || ''} rows={2} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">해결 과정 및 전략 (Solution)</label>
+                  <textarea name="solution" defaultValue={editingItem.solution || ''} rows={4} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">성과 및 결과 (Result)</label>
+                  <input name="result" defaultValue={editingItem.result || ''} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" />
                 </div>
 
                 <p className="text-[10px] text-ink/30">* 수정 시 이미지는 변경할 수 없습니다. 이미지를 변경하려면 삭제 후 다시 등록해주세요.</p>

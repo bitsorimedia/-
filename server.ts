@@ -154,16 +154,30 @@ async function startServer() {
     }
   });
 
+  app.post("/api/admin/verify", (req, res) => {
+    const { password } = req.body;
+    const adminPass = process.env.ADMIN_PASSWORD || "1234";
+    if (password === adminPass) {
+      res.json({ success: true });
+    } else {
+      res.status(403).json({ error: "Unauthorized" });
+    }
+  });
+
   app.post("/api/portfolio", upload.array("images"), async (req, res) => {
     try {
       const { title, category, video_url = null, problem = null, solution = null, result = null, password } = req.body;
+      console.log("Portfolio POST request received:", { title, category, video_url, password: password ? 'PROVIDED' : 'MISSING' });
+      
       const adminPass = process.env.ADMIN_PASSWORD || "1234";
       
       if (password !== adminPass) {
+        console.warn("Unauthorized portfolio upload attempt");
         return res.status(403).json({ error: "Unauthorized" });
       }
 
       const files = req.files as Express.Multer.File[];
+      console.log(`Received ${files?.length || 0} files`);
       
       // Upload to Cloudinary if enabled
       const uploadedMedia = [];
@@ -368,6 +382,15 @@ async function startServer() {
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
+  });
+
+  // Error handling middleware
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("Server Error:", err);
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
+    }
+    res.status(500).json({ error: "Internal server error" });
   });
 
   // --- Production Serving ---
