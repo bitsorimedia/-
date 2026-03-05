@@ -655,10 +655,6 @@ const WorkDetail = () => {
                 <p className="text-sm text-ink/40">기획력을 갖춘 작업자라는 강력한 신뢰를 바탕으로 프로젝트를 성공적으로 이끌었습니다.</p>
               </div>
             )}
-
-            <a href="#contact" className="block w-full py-4 bg-primary text-white text-center rounded-2xl font-bold uppercase tracking-widest hover:bg-primary-dark transition-all">
-              비슷한 프로젝트 문의
-            </a>
           </div>
         </div>
       </div>
