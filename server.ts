@@ -44,6 +44,7 @@ db.exec(`
     problem TEXT,
     solution TEXT,
     result TEXT,
+    sort_order INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -70,6 +71,7 @@ db.exec(`
 
 // Migration: Add public_id to portfolio_images
 try { db.exec("ALTER TABLE portfolio_images ADD COLUMN public_id TEXT"); } catch (e) {}
+try { db.exec("ALTER TABLE portfolio ADD COLUMN sort_order INTEGER DEFAULT 0"); } catch (e) {}
 
 // Multer configuration (Memory storage for Cloudinary, Disk for Local)
 const storage = useCloudinary ? multer.memoryStorage() : multer.diskStorage({
@@ -103,6 +105,7 @@ async function startServer() {
         const { data: portfolio, error } = await supabase
           .from('portfolio')
           .select('*, portfolio_images(*)')
+          .order('sort_order', { ascending: true })
           .order('created_at', { ascending: false });
         
         if (error) throw error;
@@ -114,7 +117,7 @@ async function startServer() {
         return res.json(items);
       }
 
-      const items = db.prepare("SELECT * FROM portfolio ORDER BY created_at DESC").all() as any[];
+      const items = db.prepare("SELECT * FROM portfolio ORDER BY sort_order ASC, created_at DESC").all() as any[];
       const itemsWithImages = items.map(item => {
         const images = db.prepare("SELECT * FROM portfolio_images WHERE portfolio_id = ?").all(item.id);
         return { ...item, images };
@@ -231,6 +234,35 @@ async function startServer() {
       res.json({ id: portfolioId! });
     } catch (error: any) {
       console.error("Upload error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/portfolio/order", async (req, res) => {
+    try {
+      const { orders, password } = req.body;
+      const adminPass = process.env.ADMIN_PASSWORD || "1234";
+      if (password !== adminPass) return res.status(403).json({ error: "Unauthorized" });
+
+      if (useCloud && supabase) {
+        for (const item of orders) {
+          const { error } = await supabase
+            .from('portfolio')
+            .update({ sort_order: item.sort_order })
+            .eq('id', item.id);
+          if (error) throw error;
+        }
+        return res.json({ success: true });
+      }
+
+      const updateStmt = db.prepare("UPDATE portfolio SET sort_order = ? WHERE id = ?");
+      db.transaction(() => {
+        for (const item of orders) {
+          updateStmt.run(item.sort_order, item.id);
+        }
+      })();
+      res.json({ success: true });
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });

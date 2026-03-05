@@ -16,10 +16,27 @@ import {
   Edit,
   ExternalLink,
   Settings,
-  Phone
+  Phone,
+  GripVertical,
+  Save
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom';
+import { 
+  DndContext, 
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  rectSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // --- Types ---
 interface PortfolioImage {
@@ -664,6 +681,121 @@ const WorkDetail = () => {
   );
 };
 
+const SortablePortfolioItem = ({ 
+  item, 
+  deleteConfirm, 
+  setDeleteConfirm, 
+  handleDelete, 
+  setEditingItem, 
+  setShowEdit, 
+  isDeleting 
+}: any) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className="glass rounded-2xl overflow-hidden group relative"
+    >
+      <div className="aspect-video relative bg-black/5">
+        {item.images?.[0]?.type === 'video' ? (
+          <video 
+            src={item.images[0].url} 
+            muted 
+            loop 
+            playsInline
+            autoPlay
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <img src={item.images?.[0]?.url || 'https://picsum.photos/seed/placeholder/800/450'} className="w-full h-full object-cover" />
+        )}
+        
+        {/* Drag Handle */}
+        <div 
+          {...attributes} 
+          {...listeners}
+          className="absolute top-4 left-4 z-20 p-2 bg-white/80 backdrop-blur-md rounded-lg shadow-lg cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <GripVertical size={20} className="text-ink/60" />
+        </div>
+
+        <div className="absolute inset-0 bg-white/40 flex items-center justify-center z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+          {deleteConfirm === item.id ? (
+            <div className="bg-white p-4 rounded-2xl shadow-2xl flex flex-col gap-3 animate-in fade-in zoom-in duration-200">
+              <p className="text-xs font-bold text-ink text-center">정말 삭제할까요?</p>
+              <div className="flex gap-2">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(item.id);
+                  }}
+                  className="px-4 py-2 bg-red-500 text-white text-[10px] font-bold rounded-lg hover:bg-red-600"
+                >
+                  삭제
+                </button>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteConfirm(null);
+                  }}
+                  className="px-4 py-2 bg-black/5 text-ink text-[10px] font-bold rounded-lg hover:bg-black/10"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setEditingItem(item);
+                  setShowEdit(true);
+                }} 
+                className="flex items-center gap-2 px-6 py-3 bg-accent rounded-full hover:scale-105 active:scale-95 transition-all text-white text-sm font-bold shadow-xl"
+              >
+                <Edit size={18} /> 수정하기
+              </button>
+              <button 
+                disabled={isDeleting === item.id}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setDeleteConfirm(item.id);
+                }} 
+                className={`flex items-center gap-2 px-6 py-3 bg-red-500 rounded-full hover:scale-105 active:scale-95 transition-all text-white text-sm font-bold shadow-xl ${isDeleting === item.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {isDeleting === item.id ? '삭제 중...' : <><Trash2 size={18} /> 삭제하기</>}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="p-6">
+        <p className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">{item.category}</p>
+        <h3 className="font-bold">{item.title}</h3>
+      </div>
+    </div>
+  );
+};
+
 const Admin = () => {
   const [password, setPassword] = useState('');
   const [isAuth, setIsAuth] = useState(false);
@@ -678,6 +810,56 @@ const Admin = () => {
   const [editingItem, setEditingItem] = useState<PortfolioItem | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<{ url: string, type: string }[]>([]);
+  const [isOrderChanged, setIsOrderChanged] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setItems((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id);
+        const newIndex = items.findIndex((i) => i.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+      setIsOrderChanged(true);
+    }
+  };
+
+  const saveOrder = async () => {
+    setIsSaving(true);
+    try {
+      const orders = items.map((item, index) => ({
+        id: item.id,
+        sort_order: index
+      }));
+
+      const response = await fetch('/api/portfolio/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orders, password })
+      });
+
+      if (response.ok) {
+        alert('순서가 저장되었습니다.');
+        setIsOrderChanged(false);
+      } else {
+        alert('순서 저장 실패');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('순서 저장 중 오류 발생');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -891,91 +1073,51 @@ const Admin = () => {
         </div>
         <div className="flex gap-4">
           {activeTab === 'portfolio' && (
-            <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-6 py-3 bg-accent text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-accent-dark transition-all">
-              <Plus size={16} /> 새 프로젝트 추가
-            </button>
+            <>
+              {isOrderChanged && (
+                <button 
+                  onClick={saveOrder} 
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-green-700 transition-all shadow-lg animate-bounce"
+                >
+                  <Save size={16} /> 순서 저장
+                </button>
+              )}
+              <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-6 py-3 bg-accent text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-accent-dark transition-all">
+                <Plus size={16} /> 새 프로젝트 추가
+              </button>
+            </>
           )}
           <button onClick={() => setIsAuth(false)} className="px-6 py-3 glass rounded-xl font-bold uppercase tracking-widest text-xs">로그아웃</button>
         </div>
       </div>
 
       {activeTab === 'portfolio' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map(item => (
-            <div key={item.id} className="glass rounded-2xl overflow-hidden group">
-              <div className="aspect-video relative bg-black/5">
-                {item.images?.[0]?.type === 'video' ? (
-                  <video 
-                    src={item.images[0].url} 
-                    muted 
-                    loop 
-                    playsInline
-                    autoPlay
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <img src={item.images?.[0]?.url || 'https://picsum.photos/seed/placeholder/800/450'} className="w-full h-full object-cover" />
-                )}
-                <div className="absolute inset-0 bg-white/40 flex items-center justify-center z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {deleteConfirm === item.id ? (
-                    <div className="bg-white p-4 rounded-2xl shadow-2xl flex flex-col gap-3 animate-in fade-in zoom-in duration-200">
-                      <p className="text-xs font-bold text-ink text-center">정말 삭제할까요?</p>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(item.id);
-                          }}
-                          className="px-4 py-2 bg-red-500 text-white text-[10px] font-bold rounded-lg hover:bg-red-600"
-                        >
-                          삭제
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirm(null);
-                          }}
-                          className="px-4 py-2 bg-black/5 text-ink text-[10px] font-bold rounded-lg hover:bg-black/10"
-                        >
-                          취소
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      <button 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setEditingItem(item);
-                          setShowEdit(true);
-                        }} 
-                        className="flex items-center gap-2 px-6 py-3 bg-accent rounded-full hover:scale-105 active:scale-95 transition-all text-white text-sm font-bold shadow-xl"
-                      >
-                        <Edit size={18} /> 수정하기
-                      </button>
-                      <button 
-                        disabled={isDeleting === item.id}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setDeleteConfirm(item.id);
-                        }} 
-                        className={`flex items-center gap-2 px-6 py-3 bg-red-500 rounded-full hover:scale-105 active:scale-95 transition-all text-white text-sm font-bold shadow-xl ${isDeleting === item.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        {isDeleting === item.id ? '삭제 중...' : <><Trash2 size={18} /> 삭제하기</>}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="p-6">
-                <p className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">{item.category}</p>
-                <h3 className="font-bold">{item.title}</h3>
-              </div>
+        <DndContext 
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext 
+            items={items.map(i => i.id)}
+            strategy={rectSortingStrategy}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {items.map(item => (
+                <SortablePortfolioItem 
+                  key={item.id} 
+                  item={item} 
+                  deleteConfirm={deleteConfirm}
+                  setDeleteConfirm={setDeleteConfirm}
+                  handleDelete={handleDelete}
+                  setEditingItem={setEditingItem}
+                  setShowEdit={setShowEdit}
+                  isDeleting={isDeleting}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       ) : (
         <div className="space-y-6">
           {inquiries.length === 0 ? (
