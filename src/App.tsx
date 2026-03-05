@@ -81,7 +81,7 @@ const Navbar = () => {
               {link.name}
             </a>
           ))}
-          <a href="#contact" className="px-5 py-2 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded-full hover:bg-primary-dark transition-all">
+          <a href="#contact" className="px-5 py-2 bg-accent text-white text-xs font-bold uppercase tracking-widest rounded-full hover:bg-accent-dark transition-all">
             프로젝트 문의
           </a>
           <Link to="/admin" className="p-2 text-ink/40 hover:text-ink transition-colors" title="관리자 페이지">
@@ -158,17 +158,18 @@ const Hero = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="text-5xl md:text-8xl font-bold mb-8 leading-[1.1] tracking-tight"
+          className="text-5xl md:text-8xl font-bold mb-8 leading-[1.1] tracking-tight text-ink drop-shadow-md"
         >
           시선을 머물게 하고,<br />
-          <span className="text-gradient">마음을 움직이는</span> 영상을 만듭니다.
+          마음을 움직이는 영상을<br />
+          만듭니다.
         </motion.h1>
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.6 }}
         >
-          <a href="#contact" className="inline-flex items-center gap-3 px-8 py-4 bg-primary text-white rounded-full font-bold uppercase tracking-widest hover:scale-105 transition-transform">
+          <a href="#contact" className="inline-flex items-center gap-3 px-8 py-4 bg-accent text-white rounded-full font-bold uppercase tracking-widest hover:scale-105 transition-transform">
             프로젝트 문의하기 <ArrowRight size={18} />
           </a>
         </motion.div>
@@ -465,7 +466,7 @@ const ContactSection = () => {
             </div>
             <button 
               disabled={status === 'loading'}
-              className="w-full py-4 bg-primary text-white rounded-xl font-bold uppercase tracking-widest hover:bg-primary-dark transition-all flex items-center justify-center gap-2"
+              className="w-full py-4 bg-accent text-white rounded-xl font-bold uppercase tracking-widest hover:bg-accent-dark transition-all flex items-center justify-center gap-2"
             >
               {status === 'loading' ? '전송 중...' : status === 'success' ? '전송 완료!' : '문의 보내기'}
               {status === 'idle' && <ArrowRight size={18} />}
@@ -528,7 +529,7 @@ const StickyFooter = () => {
           exit={{ y: 100 }}
           className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40"
         >
-          <a href="#contact" className="flex items-center gap-3 px-8 py-4 bg-primary text-white rounded-full font-bold uppercase tracking-widest shadow-2xl hover:scale-105 transition-transform whitespace-nowrap">
+          <a href="#contact" className="flex items-center gap-3 px-8 py-4 bg-accent text-white rounded-full font-bold uppercase tracking-widest shadow-2xl hover:scale-105 transition-transform whitespace-nowrap">
             무료 견적 상담하기 <MessageSquare size={18} />
           </a>
         </motion.div>
@@ -860,7 +861,7 @@ const Admin = () => {
             className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none"
             placeholder="비밀번호"
           />
-          <button className="w-full py-4 bg-primary text-white rounded-xl font-bold uppercase tracking-widest hover:bg-primary-dark transition-all">로그인</button>
+          <button className="w-full py-4 bg-accent text-white rounded-xl font-bold uppercase tracking-widest hover:bg-accent-dark transition-all">로그인</button>
           <Link to="/" className="block text-center text-xs text-ink/30 hover:text-ink transition-colors">홈으로 돌아가기</Link>
         </form>
       </div>
@@ -890,7 +891,7 @@ const Admin = () => {
         </div>
         <div className="flex gap-4">
           {activeTab === 'portfolio' && (
-            <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-primary-dark transition-all">
+            <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-6 py-3 bg-accent text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-accent-dark transition-all">
               <Plus size={16} /> 새 프로젝트 추가
             </button>
           )}
@@ -949,7 +950,7 @@ const Admin = () => {
                           setEditingItem(item);
                           setShowEdit(true);
                         }} 
-                        className="flex items-center gap-2 px-6 py-3 bg-primary rounded-full hover:scale-105 active:scale-95 transition-all text-white text-sm font-bold shadow-xl"
+                        className="flex items-center gap-2 px-6 py-3 bg-accent rounded-full hover:scale-105 active:scale-95 transition-all text-white text-sm font-bold shadow-xl"
                       >
                         <Edit size={18} /> 수정하기
                       </button>
@@ -1086,7 +1087,7 @@ const Admin = () => {
                 </div>
                 <button 
                   disabled={isSaving}
-                  className={`w-full py-4 bg-primary text-white rounded-xl font-bold uppercase tracking-widest transition-all ${isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary-dark'}`}
+                  className={`w-full py-4 bg-accent text-white rounded-xl font-bold uppercase tracking-widest transition-all ${isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent-dark'}`}
                 >
                   {isSaving ? '저장 중...' : '프로젝트 저장'}
                 </button>
@@ -1137,7 +1138,7 @@ const Admin = () => {
 
                 <button 
                   disabled={isSaving}
-                  className={`w-full py-4 bg-primary text-white rounded-xl font-bold uppercase tracking-widest transition-all ${isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary-dark'}`}
+                  className={`w-full py-4 bg-accent text-white rounded-xl font-bold uppercase tracking-widest transition-all ${isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent-dark'}`}
                 >
                   {isSaving ? '수정 중...' : '수정 완료'}
                 </button>
