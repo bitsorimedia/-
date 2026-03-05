@@ -205,7 +205,20 @@ const WorkSection = () => {
   const categories = ['All', '유튜브 콘텐츠', '브랜드 홍보', '제품상세페이지', '카드뉴스', '기타'];
 
   useEffect(() => {
-    fetch('/api/portfolio').then(res => res.json()).then(setItems);
+    fetch('/api/portfolio')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setItems(data);
+        } else {
+          console.error("Portfolio data is not an array:", data);
+          setItems([]);
+        }
+      })
+      .catch(err => {
+        console.error("Failed to fetch portfolio:", err);
+        setItems([]);
+      });
   }, []);
 
   const filteredItems = filter === 'All' ? items : items.filter(item => item.category === filter);
@@ -588,11 +601,21 @@ const WorkDetail = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`/api/portfolio/${id}`).then(res => res.json()).then(setItem);
+    fetch(`/api/portfolio/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.error) {
+          setItem(data);
+        } else {
+          console.error("Failed to load project:", data);
+          navigate('/');
+        }
+      })
+      .catch(() => navigate('/'));
     window.scrollTo(0, 0);
-  }, [id]);
+  }, [id, navigate]);
 
-  if (!item) return <div className="h-screen flex items-center justify-center">Loading...</div>;
+  if (!item) return <div className="h-screen flex items-center justify-center text-ink/20 font-bold uppercase tracking-widest animate-pulse">Loading...</div>;
 
   return (
     <div className="min-h-screen">
@@ -894,7 +917,16 @@ const Admin = () => {
   }, [isAuth]);
 
   const fetchItems = () => {
-    fetch('/api/portfolio').then(res => res.json()).then(setItems);
+    fetch('/api/portfolio')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setItems(data);
+        } else {
+          setItems([]);
+        }
+      })
+      .catch(() => setItems([]));
   };
 
   const fetchInquiries = () => {

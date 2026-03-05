@@ -379,9 +379,10 @@ async function startServer() {
     app.get("*", (req, res) => res.sendFile(path.join(__dirname, "dist/index.html")));
   }
 
-  const PORT = 3000;
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  const PORT = process.env.PORT || 3000;
+  app.listen(Number(PORT), "0.0.0.0", () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Node Environment: ${process.env.NODE_ENV}`);
     console.log(`Cloud Mode: ${useCloud ? 'ENABLED' : 'DISABLED (Using SQLite)'}`);
     console.log(`Cloudinary Mode: ${useCloudinary ? 'ENABLED' : 'DISABLED (Using Local Disk)'}`);
   });
