@@ -276,6 +276,34 @@ async function startServer() {
     }
   });
 
+  app.put("/api/portfolio/:id", async (req, res) => {
+    try {
+      const { title, category, video_url, problem, solution, result, password } = req.body;
+      const id = req.params.id;
+      const adminPass = process.env.ADMIN_PASSWORD || "1234";
+      
+      if (password !== adminPass) return res.status(403).json({ error: "Unauthorized" });
+
+      if (useCloud && supabase) {
+        const { error } = await supabase
+          .from('portfolio')
+          .update({ title, category, video_url, problem, solution, result })
+          .eq('id', id);
+        
+        if (error) throw error;
+        return res.json({ success: true });
+      }
+
+      // Local fallback
+      db.prepare("UPDATE portfolio SET title = ?, category = ?, video_url = ?, problem = ?, solution = ?, result = ? WHERE id = ?")
+        .run(title, category, video_url, problem, solution, result, id);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/inquiries", async (req, res) => {
     try {
       const { name, email, phone, budget, message } = req.body;

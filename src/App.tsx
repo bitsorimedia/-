@@ -13,6 +13,7 @@ import {
   Lock,
   Plus,
   Trash2,
+  Edit,
   ExternalLink,
   Settings,
   Phone
@@ -183,7 +184,7 @@ const Hero = () => {
 const WorkSection = () => {
   const [items, setItems] = useState<PortfolioItem[]>([]);
   const [filter, setFilter] = useState('All');
-  const categories = ['All', '유튜브 콘텐츠', '브랜드 홍보 영상', '숏폼'];
+  const categories = ['All', '유튜브 콘텐츠', '브랜드 홍보', '제품상세페이지', '카드뉴스', '기타'];
 
   useEffect(() => {
     fetch('/api/portfolio').then(res => res.json()).then(setItems);
@@ -193,7 +194,7 @@ const WorkSection = () => {
 
   return (
     <section id="work" className="py-24 px-6 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-8">
         <div>
           <h2 className="text-sm font-bold uppercase tracking-widest text-ink/40 mb-4">Selected Works</h2>
           <h3 className="text-4xl md:text-6xl font-bold tracking-tight">포트폴리오</h3>
@@ -676,6 +677,8 @@ const Admin = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editingItem, setEditingItem] = useState<PortfolioItem | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<{ url: string, type: string }[]>([]);
 
@@ -807,6 +810,45 @@ const Admin = () => {
     }
   };
 
+  const handleEdit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    setIsSaving(true);
+    
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      title: formData.get('title'),
+      category: formData.get('category'),
+      video_url: formData.get('video_url'),
+      problem: formData.get('problem'),
+      solution: formData.get('solution'),
+      result: formData.get('result'),
+      password: password
+    };
+
+    try {
+      const response = await fetch(`/api/portfolio/${editingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        alert('프로젝트가 수정되었습니다.');
+        setShowEdit(false);
+        setEditingItem(null);
+        fetchItems();
+      } else {
+        const err = await response.json();
+        alert(`수정 실패: ${err.error}`);
+      }
+    } catch (error: any) {
+      alert(`수정 중 오류 발생: ${error.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (!isAuth) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -877,7 +919,7 @@ const Admin = () => {
                 ) : (
                   <img src={item.images?.[0]?.url || 'https://picsum.photos/seed/placeholder/800/450'} className="w-full h-full object-cover" />
                 )}
-                <div className="absolute inset-0 bg-white/40 flex items-center justify-center z-10">
+                <div className="absolute inset-0 bg-white/40 flex items-center justify-center z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                   {deleteConfirm === item.id ? (
                     <div className="bg-white p-4 rounded-2xl shadow-2xl flex flex-col gap-3 animate-in fade-in zoom-in duration-200">
                       <p className="text-xs font-bold text-ink text-center">정말 삭제할까요?</p>
@@ -903,17 +945,30 @@ const Admin = () => {
                       </div>
                     </div>
                   ) : (
-                    <button 
-                      disabled={isDeleting === item.id}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setDeleteConfirm(item.id);
-                      }} 
-                      className={`flex items-center gap-2 px-6 py-3 bg-red-500 rounded-full hover:scale-105 active:scale-95 transition-all text-white text-sm font-bold shadow-xl ${isDeleting === item.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {isDeleting === item.id ? '삭제 중...' : <><Trash2 size={18} /> 삭제하기</>}
-                    </button>
+                    <div className="flex flex-col gap-3">
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setEditingItem(item);
+                          setShowEdit(true);
+                        }} 
+                        className="flex items-center gap-2 px-6 py-3 bg-primary rounded-full hover:scale-105 active:scale-95 transition-all text-white text-sm font-bold shadow-xl"
+                      >
+                        <Edit size={18} /> 수정하기
+                      </button>
+                      <button 
+                        disabled={isDeleting === item.id}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDeleteConfirm(item.id);
+                        }} 
+                        className={`flex items-center gap-2 px-6 py-3 bg-red-500 rounded-full hover:scale-105 active:scale-95 transition-all text-white text-sm font-bold shadow-xl ${isDeleting === item.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {isDeleting === item.id ? '삭제 중...' : <><Trash2 size={18} /> 삭제하기</>}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -982,11 +1037,10 @@ const Admin = () => {
                     <label className="text-xs font-bold uppercase tracking-widest text-ink/40">카테고리</label>
                     <select name="category" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none">
                       <option className="bg-white">유튜브 콘텐츠</option>
-                      <option className="bg-white">브랜드 홍보 영상</option>
-                      <option className="bg-white">숏폼</option>
+                      <option className="bg-white">브랜드 홍보</option>
                       <option className="bg-white">제품상세페이지</option>
                       <option className="bg-white">카드뉴스</option>
-                      <option className="bg-white">로고</option>
+                      <option className="bg-white">기타</option>
                     </select>
                   </div>
                 </div>
@@ -1039,6 +1093,72 @@ const Admin = () => {
                   className={`w-full py-4 bg-primary text-white rounded-xl font-bold uppercase tracking-widest transition-all ${isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary-dark'}`}
                 >
                   {isSaving ? '저장 중...' : '프로젝트 저장'}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {showEdit && editingItem && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-white/90 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="glass rounded-3xl w-full max-w-2xl p-10 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-bold">프로젝트 수정</h2>
+                <button onClick={() => { setShowEdit(false); setEditingItem(null); }}><X size={24} /></button>
+              </div>
+              <form onSubmit={handleEdit} className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-ink/40">제목</label>
+                    <input required name="title" defaultValue={editingItem.title} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-ink/40">카테고리</label>
+                    <select name="category" defaultValue={editingItem.category} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none">
+                      <option className="bg-white">유튜브 콘텐츠</option>
+                      <option className="bg-white">브랜드 홍보</option>
+                      <option className="bg-white">제품상세페이지</option>
+                      <option className="bg-white">카드뉴스</option>
+                      <option className="bg-white">기타</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">외부 영상 링크 (YouTube / Vimeo - 선택사항)</label>
+                  <input name="video_url" defaultValue={editingItem.video_url || ''} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" placeholder="https://www.youtube.com/watch?v=..." />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">과제 및 목표</label>
+                  <input name="problem" defaultValue={editingItem.problem || ''} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">해결 과정 및 전략</label>
+                  <textarea name="solution" defaultValue={editingItem.solution || ''} rows={4} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none resize-none" />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">성과 및 결과</label>
+                  <input name="result" defaultValue={editingItem.result || ''} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" />
+                </div>
+
+                <p className="text-[10px] text-ink/30">* 수정 시 이미지는 변경할 수 없습니다. 이미지를 변경하려면 삭제 후 다시 등록해주세요.</p>
+
+                <button 
+                  disabled={isSaving}
+                  className={`w-full py-4 bg-primary text-white rounded-xl font-bold uppercase tracking-widest transition-all ${isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary-dark'}`}
+                >
+                  {isSaving ? '수정 중...' : '수정 완료'}
                 </button>
               </form>
             </motion.div>
