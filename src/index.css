@@ -9,6 +9,8 @@
   --color-gold: #D4AF37;
   --color-light: #FDFDFD;
   --color-ink: #0A0A0A;
+  --color-primary: #7C3AED;
+  --color-primary-dark: #6D28D9;
 }
 
 @layer base {
@@ -22,6 +24,6 @@
 }
 
 .text-gradient {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-ink to-ink/60;
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-dark;
 }
 

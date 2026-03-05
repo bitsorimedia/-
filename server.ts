@@ -187,29 +187,32 @@ async function startServer() {
       const tableInfo = db.prepare("PRAGMA table_info(portfolio)").all() as any[];
       const hasThumbnail = tableInfo.some(col => col.name === 'thumbnail');
 
-      let info;
-      if (hasThumbnail) {
-        info = db.prepare("INSERT INTO portfolio (title, category, video_url, problem, solution, result, thumbnail) VALUES (?, ?, ?, ?, ?, ?, ?)")
-          .run(title, category, video_url, problem, solution, result, '');
-      } else {
-        info = db.prepare("INSERT INTO portfolio (title, category, video_url, problem, solution, result) VALUES (?, ?, ?, ?, ?, ?)")
-          .run(title, category, video_url, problem, solution, result);
-      }
-      
-      const portfolioId = info.lastInsertRowid;
-      console.log(`Created portfolio record with ID: ${portfolioId}`);
-      
-      const insertImg = db.prepare("INSERT INTO portfolio_images (portfolio_id, url, type, is_thumbnail) VALUES (?, ?, ?, ?)");
-      
-      files.forEach((file, index) => {
-        const url = `/uploads/${file.filename}`;
-        const type = file.mimetype.startsWith("video/") ? "video" : "image";
-        console.log(`Inserting image/video: ${url} (type: ${type})`);
-        insertImg.run(portfolioId, url, type, index === 0 ? 1 : 0);
-      });
+      let portfolioId: number | bigint;
+      db.transaction(() => {
+        let info;
+        if (hasThumbnail) {
+          info = db.prepare("INSERT INTO portfolio (title, category, video_url, problem, solution, result, thumbnail) VALUES (?, ?, ?, ?, ?, ?, ?)")
+            .run(title, category, video_url, problem, solution, result, '');
+        } else {
+          info = db.prepare("INSERT INTO portfolio (title, category, video_url, problem, solution, result) VALUES (?, ?, ?, ?, ?, ?)")
+            .run(title, category, video_url, problem, solution, result);
+        }
+        
+        portfolioId = info.lastInsertRowid;
+        console.log(`Created portfolio record with ID: ${portfolioId}`);
+        
+        const insertImg = db.prepare("INSERT INTO portfolio_images (portfolio_id, url, type, is_thumbnail) VALUES (?, ?, ?, ?)");
+        
+        files.forEach((file, index) => {
+          const url = `/uploads/${file.filename}`;
+          const type = file.mimetype.startsWith("video/") ? "video" : "image";
+          console.log(`Inserting image/video: ${url} (type: ${type})`);
+          insertImg.run(portfolioId, url, type, index === 0 ? 1 : 0);
+        });
+      })();
 
       console.log("Upload completed successfully");
-      res.json({ id: portfolioId });
+      res.json({ id: portfolioId! });
     } catch (error: any) {
       console.error("Upload error:", error);
       res.status(500).json({ error: error.message });
@@ -316,6 +319,16 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    
+    // Persistence Check
+    const dbPath = path.join(__dirname, "portfolio.db");
+    if (fs.existsSync(dbPath)) {
+      const stats = fs.statSync(dbPath);
+      console.log(`[DB CHECK] portfolio.db exists. Size: ${stats.size} bytes`);
+    } else {
+      console.warn("[DB CHECK] portfolio.db NOT FOUND in root!");
+    }
+
     try {
       const portfolioSchema = db.prepare("PRAGMA table_info(portfolio)").all();
       console.log("Portfolio Schema:", JSON.stringify(portfolioSchema, null, 2));

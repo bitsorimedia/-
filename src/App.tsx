@@ -80,7 +80,7 @@ const Navbar = () => {
               {link.name}
             </a>
           ))}
-          <a href="#contact" className="px-5 py-2 bg-ink text-white text-xs font-bold uppercase tracking-widest rounded-full hover:bg-ink/90 transition-all">
+          <a href="#contact" className="px-5 py-2 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded-full hover:bg-primary-dark transition-all">
             프로젝트 문의
           </a>
           <Link to="/admin" className="p-2 text-ink/40 hover:text-ink transition-colors" title="관리자 페이지">
@@ -167,7 +167,7 @@ const Hero = () => {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.6 }}
         >
-          <a href="#contact" className="inline-flex items-center gap-3 px-8 py-4 bg-ink text-white rounded-full font-bold uppercase tracking-widest hover:scale-105 transition-transform">
+          <a href="#contact" className="inline-flex items-center gap-3 px-8 py-4 bg-primary text-white rounded-full font-bold uppercase tracking-widest hover:scale-105 transition-transform">
             프로젝트 문의하기 <ArrowRight size={18} />
           </a>
         </motion.div>
@@ -203,7 +203,7 @@ const WorkSection = () => {
             <button 
               key={cat}
               onClick={() => setFilter(cat)}
-              className={`whitespace-nowrap px-4 py-2 rounded-full border text-xs font-bold uppercase tracking-widest transition-all ${filter === cat ? 'bg-ink text-white border-ink' : 'border-black/10 hover:border-black/30'}`}
+              className={`whitespace-nowrap px-4 py-2 rounded-full border text-xs font-bold uppercase tracking-widest transition-all ${filter === cat ? 'bg-primary text-white border-primary' : 'border-black/10 hover:border-black/30'}`}
             >
               {cat}
             </button>
@@ -287,7 +287,7 @@ const AboutSection = () => {
               className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700"
             />
           </div>
-          <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-ink rounded-3xl p-8 hidden md:flex flex-col justify-end">
+          <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-primary rounded-3xl p-8 hidden md:flex flex-col justify-end">
             <p className="text-white text-4xl font-serif font-bold">08+</p>
             <p className="text-white/60 text-xs font-bold uppercase tracking-widest">Years Exp.</p>
           </div>
@@ -464,7 +464,7 @@ const ContactSection = () => {
             </div>
             <button 
               disabled={status === 'loading'}
-              className="w-full py-4 bg-ink text-white rounded-xl font-bold uppercase tracking-widest hover:bg-ink/90 transition-all flex items-center justify-center gap-2"
+              className="w-full py-4 bg-primary text-white rounded-xl font-bold uppercase tracking-widest hover:bg-primary-dark transition-all flex items-center justify-center gap-2"
             >
               {status === 'loading' ? '전송 중...' : status === 'success' ? '전송 완료!' : '문의 보내기'}
               {status === 'idle' && <ArrowRight size={18} />}
@@ -479,12 +479,30 @@ const ContactSection = () => {
 
 const Footer = () => {
   return (
-    <footer className="py-12 border-t border-black/5">
-      <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
-        <div className="text-xl font-bold tracking-tighter">빛소리미디어</div>
-        <p className="text-ink/30 text-xs uppercase tracking-widest">© 2026 빛소리미디어. All rights reserved.</p>
-        <div className="flex gap-6">
-          <Link to="/admin" className="text-ink/20 hover:text-ink transition-colors"><Lock size={16} /></Link>
+    <footer className="py-16 border-t border-black/5 bg-white">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-12">
+          <div>
+            <div className="text-2xl font-bold tracking-tighter mb-6">빛소리미디어</div>
+            <div className="space-y-2 text-sm text-ink/50">
+              <p>사업자명 : 와이즈플래닛</p>
+              <p>사업자등록번호 : 702-02-01579</p>
+              <p>사업장주소 : 전북특별자치도 전주시 완산구 홍산남로 30, 삼진빌딩 302호</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-8">
+            <a href="https://instagram.com" className="text-ink/40 hover:text-primary transition-colors"><Instagram size={20} /></a>
+            <a href="https://youtube.com" className="text-ink/40 hover:text-primary transition-colors"><Youtube size={20} /></a>
+            <a href="mailto:bitsorimedia@gmail.com" className="text-ink/40 hover:text-primary transition-colors"><Mail size={20} /></a>
+          </div>
+        </div>
+
+        <div className="pt-8 border-t border-black/5 flex flex-col md:flex-row justify-between items-center gap-6">
+          <p className="text-ink/30 text-[10px] uppercase tracking-widest">© 2026 빛소리미디어. All rights reserved.</p>
+          <div className="flex items-center gap-6">
+            <Link to="/admin" className="text-ink/10 hover:text-ink transition-colors"><Lock size={14} /></Link>
+          </div>
         </div>
       </div>
     </footer>
@@ -509,7 +527,7 @@ const StickyFooter = () => {
           exit={{ y: 100 }}
           className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40"
         >
-          <a href="#contact" className="flex items-center gap-3 px-8 py-4 bg-ink text-white rounded-full font-bold uppercase tracking-widest shadow-2xl hover:scale-105 transition-transform whitespace-nowrap">
+          <a href="#contact" className="flex items-center gap-3 px-8 py-4 bg-primary text-white rounded-full font-bold uppercase tracking-widest shadow-2xl hover:scale-105 transition-transform whitespace-nowrap">
             무료 견적 상담하기 <MessageSquare size={18} />
           </a>
         </motion.div>
@@ -520,19 +538,30 @@ const StickyFooter = () => {
 
 // --- Pages ---
 
-const Home = () => (
-  <main>
-    <Navbar />
-    <Hero />
-    <WorkSection />
-    <AboutSection />
-    <ProcessSection />
-    <Testimonials />
-    <ContactSection />
-    <Footer />
-    <StickyFooter />
-  </main>
-);
+const Home = () => {
+  useEffect(() => {
+    if (window.location.hash === '#work') {
+      setTimeout(() => {
+        const el = document.getElementById('work');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  }, []);
+
+  return (
+    <main>
+      <Navbar />
+      <Hero />
+      <WorkSection />
+      <AboutSection />
+      <ProcessSection />
+      <Testimonials />
+      <ContactSection />
+      <Footer />
+      <StickyFooter />
+    </main>
+  );
+};
 
 const WorkDetail = () => {
   const { id } = useParams();
@@ -549,7 +578,7 @@ const WorkDetail = () => {
   return (
     <div className="min-h-screen">
       <nav className="p-6">
-        <Link to="/" className="flex items-center gap-2 text-ink/50 hover:text-ink transition-colors">
+        <Link to="/#work" className="flex items-center gap-2 text-ink/50 hover:text-ink transition-colors">
           <ArrowRight className="rotate-180" size={20} /> 포트폴리오 목록으로
         </Link>
       </nav>
@@ -626,7 +655,7 @@ const WorkDetail = () => {
               </div>
             )}
 
-            <a href="#contact" className="block w-full py-4 bg-ink text-white text-center rounded-2xl font-bold uppercase tracking-widest hover:bg-ink/90 transition-all">
+            <a href="#contact" className="block w-full py-4 bg-primary text-white text-center rounded-2xl font-bold uppercase tracking-widest hover:bg-primary-dark transition-all">
               비슷한 프로젝트 문의
             </a>
           </div>
@@ -793,7 +822,7 @@ const Admin = () => {
             className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none"
             placeholder="비밀번호"
           />
-          <button className="w-full py-4 bg-ink text-white rounded-xl font-bold uppercase tracking-widest">로그인</button>
+          <button className="w-full py-4 bg-primary text-white rounded-xl font-bold uppercase tracking-widest hover:bg-primary-dark transition-all">로그인</button>
           <Link to="/" className="block text-center text-xs text-ink/30 hover:text-ink transition-colors">홈으로 돌아가기</Link>
         </form>
       </div>
@@ -809,13 +838,13 @@ const Admin = () => {
           <div className="flex gap-4">
             <button 
               onClick={() => setActiveTab('portfolio')}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'portfolio' ? 'bg-ink text-white' : 'bg-black/5 text-ink/40 hover:text-ink'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'portfolio' ? 'bg-primary text-white' : 'bg-black/5 text-ink/40 hover:text-ink'}`}
             >
               포트폴리오 관리
             </button>
             <button 
               onClick={() => setActiveTab('inquiries')}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'inquiries' ? 'bg-ink text-white' : 'bg-black/5 text-ink/40 hover:text-ink'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'inquiries' ? 'bg-primary text-white' : 'bg-black/5 text-ink/40 hover:text-ink'}`}
             >
               문의 내역 확인
             </button>
@@ -823,7 +852,7 @@ const Admin = () => {
         </div>
         <div className="flex gap-4">
           {activeTab === 'portfolio' && (
-            <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-6 py-3 bg-ink text-white rounded-xl font-bold uppercase tracking-widest text-xs">
+            <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-primary-dark transition-all">
               <Plus size={16} /> 새 프로젝트 추가
             </button>
           )}
@@ -1007,7 +1036,7 @@ const Admin = () => {
                 </div>
                 <button 
                   disabled={isSaving}
-                  className={`w-full py-4 bg-ink text-white rounded-xl font-bold uppercase tracking-widest transition-all ${isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-ink/90'}`}
+                  className={`w-full py-4 bg-primary text-white rounded-xl font-bold uppercase tracking-widest transition-all ${isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary-dark'}`}
                 >
                   {isSaving ? '저장 중...' : '프로젝트 저장'}
                 </button>
