@@ -485,7 +485,7 @@ const Footer = () => {
           <div>
             <div className="text-2xl font-bold tracking-tighter mb-6">빛소리미디어</div>
             <div className="space-y-2 text-sm text-ink/50">
-              <p>사업자명 : 와이즈플래닛</p>
+              <p>상호명 : 와이즈플래닛</p>
               <p>사업자등록번호 : 702-02-01579</p>
               <p>사업장주소 : 전북특별자치도 전주시 완산구 홍산남로 30, 삼진빌딩 302호</p>
             </div>
