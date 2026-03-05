@@ -5,20 +5,36 @@ import path from "path";
 import { fileURLToPath } from "url";
 import multer from "multer";
 import fs from "fs";
+import { createClient } from "@supabase/supabase-js";
+import { v2 as cloudinary } from "cloudinary";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure uploads directory exists
-const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+// --- Cloud Configuration ---
+const useCloud = !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
+const useCloudinary = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+
+const supabase = useCloud 
+  ? createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!) 
+  : null;
+
+if (useCloudinary) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
 }
 
+// --- Local SQLite Fallback ---
 const db = new Database("portfolio.db");
 db.exec("PRAGMA foreign_keys = ON");
 
-// Initialize Database
+// Initialize Local Database
 db.exec(`
   CREATE TABLE IF NOT EXISTS portfolio (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,6 +53,7 @@ db.exec(`
     url TEXT NOT NULL,
     type TEXT DEFAULT 'image',
     is_thumbnail INTEGER DEFAULT 0,
+    public_id TEXT,
     FOREIGN KEY (portfolio_id) REFERENCES portfolio (id) ON DELETE CASCADE
   );
 
@@ -51,64 +68,26 @@ db.exec(`
   );
 `);
 
-// Migration: Add type column to portfolio_images if it doesn't exist
-try {
-  db.exec("ALTER TABLE portfolio_images ADD COLUMN type TEXT DEFAULT 'image'");
-} catch (e) {}
+// Migration: Add public_id to portfolio_images
+try { db.exec("ALTER TABLE portfolio_images ADD COLUMN public_id TEXT"); } catch (e) {}
 
-// Migration: Make thumbnail optional in portfolio table if it exists
-try {
-  // SQLite doesn't support ALTER TABLE DROP COLUMN or ALTER COLUMN easily.
-  // We'll just check if it exists and if so, we'll handle it in the insert or just ignore it if it's already nullable.
-  // Actually, the simplest way to fix the "NOT NULL" issue is to just add a default value if we can't drop it.
-  // But we can't easily change NOT NULL to NULL in SQLite without recreating the table.
-  // Let's try to just add a default value.
-  db.exec("ALTER TABLE portfolio ADD COLUMN thumbnail TEXT DEFAULT ''");
-} catch (e) {
-  // Column might already exist or table might be different
-}
-
-// Multer configuration for file uploads
-const storage = multer.diskStorage({
+// Multer configuration (Memory storage for Cloudinary, Disk for Local)
+const storage = useCloudinary ? multer.memoryStorage() : multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/");
+    const dir = "uploads/";
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+    cb(null, dir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
   },
 });
+
 const upload = multer({ 
   storage: storage,
-  limits: {
-    fileSize: 500 * 1024 * 1024, // 500MB limit
-  }
+  limits: { fileSize: 500 * 1024 * 1024 }
 });
-
-// Seed initial data if empty
-const rowCount = db.prepare("SELECT count(*) as count FROM portfolio").get() as { count: number };
-if (rowCount.count === 0) {
-  const insert = db.prepare("INSERT INTO portfolio (title, category, problem, solution, result) VALUES (?, ?, ?, ?, ?)");
-  const insertImg = db.prepare("INSERT INTO portfolio_images (portfolio_id, url, type, is_thumbnail) VALUES (?, ?, ?, ?)");
-  
-  const res1 = insert.run(
-    "살림의 기준 - 브랜드 필름", 
-    "브랜드 홍보 영상", 
-    "정보 전달과 따뜻한 감성을 동시에 잡아야 하는 과제",
-    "자막의 폰트 선택 이유, 색보정(DI) 의도, 클릭을 유도한 썸네일 디자인 전략 등",
-    "조회수 10만회 돌파, 긍정 댓글 98%"
-  );
-  insertImg.run(res1.lastInsertRowid, "https://picsum.photos/seed/work1/800/450", "image", 1);
-
-  const res2 = insert.run(
-    "테크 리뷰 2024", 
-    "유튜브 콘텐츠", 
-    "복잡한 스펙을 시청자가 이해하기 쉽게 시각화",
-    "인포그래픽과 모션 그래픽을 활용한 직관적 설명",
-    "구독자 전환율 15% 상승"
-  );
-  insertImg.run(res2.lastInsertRowid, "https://picsum.photos/seed/work2/800/450", "image", 1);
-}
 
 async function startServer() {
   const app = express();
@@ -116,102 +95,139 @@ async function startServer() {
   app.use(express.urlencoded({ limit: '500mb', extended: true }));
   app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-  // API Routes
-  app.get("/api/debug/db", (req, res) => {
+  // --- API Routes ---
+
+  app.get("/api/portfolio", async (req, res) => {
     try {
-      const portfolioSchema = db.prepare("PRAGMA table_info(portfolio)").all();
-      const imagesSchema = db.prepare("PRAGMA table_info(portfolio_images)").all();
-      const lastItems = db.prepare("SELECT * FROM portfolio ORDER BY id DESC LIMIT 5").all();
-      const lastImages = db.prepare("SELECT * FROM portfolio_images ORDER BY id DESC LIMIT 5").all();
-      res.json({
-        portfolioSchema,
-        imagesSchema,
-        lastItems,
-        lastImages
+      if (useCloud && supabase) {
+        const { data: portfolio, error } = await supabase
+          .from('portfolio')
+          .select('*, portfolio_images(*)')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        // Map Supabase structure to match local structure
+        const items = portfolio.map(item => ({
+          ...item,
+          images: item.portfolio_images
+        }));
+        return res.json(items);
+      }
+
+      const items = db.prepare("SELECT * FROM portfolio ORDER BY created_at DESC").all() as any[];
+      const itemsWithImages = items.map(item => {
+        const images = db.prepare("SELECT * FROM portfolio_images WHERE portfolio_id = ?").all(item.id);
+        return { ...item, images };
       });
+      res.json(itemsWithImages);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.get("/api/portfolio", (req, res) => {
-    const items = db.prepare("SELECT * FROM portfolio ORDER BY created_at DESC").all() as any[];
-    const itemsWithImages = items.map(item => {
-      const images = db.prepare("SELECT * FROM portfolio_images WHERE portfolio_id = ?").all(item.id);
-      return { ...item, images };
-    });
-    res.json(itemsWithImages);
-  });
+  app.get("/api/portfolio/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      if (useCloud && supabase) {
+        const { data, error } = await supabase
+          .from('portfolio')
+          .select('*, portfolio_images(*)')
+          .eq('id', id)
+          .single();
+        
+        if (error) return res.status(404).json({ error: "Not found" });
+        return res.json({ ...data, images: data.portfolio_images });
+      }
 
-  app.get("/api/portfolio/:id", (req, res) => {
-    const item = db.prepare("SELECT * FROM portfolio WHERE id = ?").get(req.params.id) as any;
-    if (item) {
-      const images = db.prepare("SELECT * FROM portfolio_images WHERE portfolio_id = ?").all(item.id);
-      res.json({ ...item, images });
-    } else {
-      res.status(404).json({ error: "Not found" });
+      const item = db.prepare("SELECT * FROM portfolio WHERE id = ?").get(id) as any;
+      if (item) {
+        const images = db.prepare("SELECT * FROM portfolio_images WHERE portfolio_id = ?").all(item.id);
+        res.json({ ...item, images });
+      } else {
+        res.status(404).json({ error: "Not found" });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
-  app.post("/api/portfolio", (req, res, next) => {
-    upload.array("images")(req, res, (err) => {
-      if (err instanceof multer.MulterError) {
-        if (err.code === "LIMIT_FILE_SIZE") {
-          return res.status(413).json({ error: "파일 용량이 너무 큽니다. (최대 500MB)" });
-        }
-        return res.status(400).json({ error: err.message });
-      } else if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      next();
-    });
-  }, (req, res) => {
+  app.post("/api/portfolio", upload.array("images"), async (req, res) => {
     try {
-      console.log("Received project upload request");
       const { title, category, video_url = null, problem = null, solution = null, result = null, password } = req.body;
+      const adminPass = process.env.ADMIN_PASSWORD || "1234";
       
-      if (password !== "1234") {
-        console.log("Upload failed: Unauthorized password");
+      if (password !== adminPass) {
         return res.status(403).json({ error: "Unauthorized" });
       }
-      
+
       const files = req.files as Express.Multer.File[];
-      console.log(`Received ${files?.length || 0} files and video_url: ${video_url}`);
       
-      if ((!files || files.length === 0) && !video_url) {
-        console.log("Upload failed: No files or video_url provided");
+      // Upload to Cloudinary if enabled
+      const uploadedMedia = [];
+      if (useCloudinary && files && files.length > 0) {
+        for (const file of files) {
+          const b64 = Buffer.from(file.buffer).toString("base64");
+          const dataURI = "data:" + file.mimetype + ";base64," + b64;
+          const result = await cloudinary.uploader.upload(dataURI, {
+            resource_type: "auto",
+            folder: "portfolio"
+          });
+          uploadedMedia.push({
+            url: result.secure_url,
+            public_id: result.public_id,
+            type: file.mimetype.startsWith("video/") ? "video" : "image"
+          });
+        }
+      } else if (files && files.length > 0) {
+        // Local storage fallback
+        files.forEach(file => {
+          uploadedMedia.push({
+            url: `/uploads/${file.filename}`,
+            type: file.mimetype.startsWith("video/") ? "video" : "image"
+          });
+        });
+      }
+
+      if (uploadedMedia.length === 0 && !video_url) {
         return res.status(400).json({ error: "이미지/영상 파일 또는 외부 영상 링크가 필요합니다." });
       }
 
-      // We check if thumbnail column exists in the actual table to avoid errors
-      const tableInfo = db.prepare("PRAGMA table_info(portfolio)").all() as any[];
-      const hasThumbnail = tableInfo.some(col => col.name === 'thumbnail');
+      if (useCloud && supabase) {
+        const { data: portfolio, error: pError } = await supabase
+          .from('portfolio')
+          .insert([{ title, category, video_url, problem, solution, result }])
+          .select()
+          .single();
+        
+        if (pError) throw pError;
 
+        const imagesToInsert = uploadedMedia.map((media, index) => ({
+          portfolio_id: portfolio.id,
+          url: media.url,
+          public_id: media.public_id,
+          type: media.type,
+          is_thumbnail: index === 0 ? 1 : 0
+        }));
+
+        const { error: iError } = await supabase.from('portfolio_images').insert(imagesToInsert);
+        if (iError) throw iError;
+
+        return res.json({ id: portfolio.id });
+      }
+
+      // Local SQLite fallback
       let portfolioId: number | bigint;
       db.transaction(() => {
-        let info;
-        if (hasThumbnail) {
-          info = db.prepare("INSERT INTO portfolio (title, category, video_url, problem, solution, result, thumbnail) VALUES (?, ?, ?, ?, ?, ?, ?)")
-            .run(title, category, video_url, problem, solution, result, '');
-        } else {
-          info = db.prepare("INSERT INTO portfolio (title, category, video_url, problem, solution, result) VALUES (?, ?, ?, ?, ?, ?)")
-            .run(title, category, video_url, problem, solution, result);
-        }
-        
+        const info = db.prepare("INSERT INTO portfolio (title, category, video_url, problem, solution, result) VALUES (?, ?, ?, ?, ?, ?)")
+          .run(title, category, video_url, problem, solution, result);
         portfolioId = info.lastInsertRowid;
-        console.log(`Created portfolio record with ID: ${portfolioId}`);
         
-        const insertImg = db.prepare("INSERT INTO portfolio_images (portfolio_id, url, type, is_thumbnail) VALUES (?, ?, ?, ?)");
-        
-        files.forEach((file, index) => {
-          const url = `/uploads/${file.filename}`;
-          const type = file.mimetype.startsWith("video/") ? "video" : "image";
-          console.log(`Inserting image/video: ${url} (type: ${type})`);
-          insertImg.run(portfolioId, url, type, index === 0 ? 1 : 0);
+        const insertImg = db.prepare("INSERT INTO portfolio_images (portfolio_id, url, type, is_thumbnail, public_id) VALUES (?, ?, ?, ?, ?)");
+        uploadedMedia.forEach((media, index) => {
+          insertImg.run(portfolioId, media.url, media.type, index === 0 ? 1 : 0, media.public_id || null);
         });
       })();
 
-      console.log("Upload completed successfully");
       res.json({ id: portfolioId! });
     } catch (error: any) {
       console.error("Upload error:", error);
@@ -219,124 +235,95 @@ async function startServer() {
     }
   });
 
-  app.delete("/api/portfolio/:id", (req, res) => {
+  app.delete("/api/portfolio/:id", async (req, res) => {
     try {
       const { password } = req.body;
-      const id = Number(req.params.id);
-      console.log(`[DELETE] Request received for ID: ${id}`);
-      console.log(`[DELETE] Password provided: ${password ? '***' : 'NONE'}`);
+      const id = req.params.id;
+      const adminPass = process.env.ADMIN_PASSWORD || "1234";
       
-      if (password !== "1234") {
-        console.log("[DELETE] Failed: Unauthorized password");
-        return res.status(403).json({ error: "Unauthorized" });
+      if (password !== adminPass) return res.status(403).json({ error: "Unauthorized" });
+
+      if (useCloud && supabase) {
+        // Get images to delete from Cloudinary
+        const { data: images } = await supabase.from('portfolio_images').select('public_id').eq('portfolio_id', id);
+        
+        if (useCloudinary && images) {
+          for (const img of images) {
+            if (img.public_id) await cloudinary.uploader.destroy(img.public_id);
+          }
+        }
+
+        const { error } = await supabase.from('portfolio').delete().eq('id', id);
+        if (error) throw error;
+        return res.json({ success: true });
       }
 
-      // Check if project exists
-      const project = db.prepare("SELECT * FROM portfolio WHERE id = ?").get(id);
-      if (!project) {
-        console.log(`[DELETE] Failed: Project ${id} not found`);
-        return res.status(404).json({ error: "Project not found" });
-      }
-      
-      // Get images to delete files
-      const images = db.prepare("SELECT url FROM portfolio_images WHERE portfolio_id = ?").all(id) as { url: string }[];
-      console.log(`[DELETE] Found ${images.length} images/videos to delete from disk`);
-      
+      // Local fallback
+      const images = db.prepare("SELECT url, public_id FROM portfolio_images WHERE portfolio_id = ?").all(id) as any[];
       images.forEach(img => {
-        try {
-          if (img.url && img.url.startsWith("/uploads/")) {
-            const relativePath = img.url.startsWith('/') ? img.url.substring(1) : img.url;
-            const filePath = path.join(__dirname, relativePath);
-            
-            if (fs.existsSync(filePath)) {
-              fs.unlinkSync(filePath);
-              console.log(`[DELETE] Deleted file: ${filePath}`);
-            } else {
-              console.log(`[DELETE] File not found on disk, skipping: ${filePath}`);
-            }
-          }
-        } catch (fileErr) {
-          console.error(`[DELETE] Error deleting file ${img.url}:`, fileErr);
+        if (useCloudinary && img.public_id) {
+          cloudinary.uploader.destroy(img.public_id);
+        } else if (img.url && img.url.startsWith("/uploads/")) {
+          const filePath = path.join(__dirname, img.url.substring(1));
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         }
       });
 
-      // Explicitly delete images from DB first (though CASCADE should handle it)
-      db.prepare("DELETE FROM portfolio_images WHERE portfolio_id = ?").run(id);
-      console.log(`[DELETE] Deleted portfolio_images records for ID: ${id}`);
-
-      // Delete the portfolio record
-      const info = db.prepare("DELETE FROM portfolio WHERE id = ?").run(id);
-      console.log(`[DELETE] Deleted portfolio record. Changes: ${info.changes}`);
-      
+      db.prepare("DELETE FROM portfolio WHERE id = ?").run(id);
       res.json({ success: true });
     } catch (error: any) {
-      console.error("[DELETE] Critical error:", error);
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.post("/api/inquiries", (req, res) => {
-    const { name, email, phone, budget, message } = req.body;
-    db.prepare("INSERT INTO inquiries (name, email, phone, budget, message) VALUES (?, ?, ?, ?, ?)")
-      .run(name, email, phone, budget, message);
-    res.json({ success: true });
+  app.post("/api/inquiries", async (req, res) => {
+    try {
+      const { name, email, phone, budget, message } = req.body;
+      if (useCloud && supabase) {
+        const { error } = await supabase.from('inquiries').insert([{ name, email, phone, budget, message }]);
+        if (error) throw error;
+        return res.json({ success: true });
+      }
+      db.prepare("INSERT INTO inquiries (name, email, phone, budget, message) VALUES (?, ?, ?, ?, ?)")
+        .run(name, email, phone, budget, message);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
-  app.post("/api/admin/inquiries", (req, res) => {
-    const { password } = req.body;
-    if (password !== "1234") return res.status(403).json({ error: "Unauthorized" });
-    const items = db.prepare("SELECT * FROM inquiries ORDER BY created_at DESC").all();
-    res.json(items);
+  app.post("/api/admin/inquiries", async (req, res) => {
+    try {
+      const { password } = req.body;
+      const adminPass = process.env.ADMIN_PASSWORD || "1234";
+      if (password !== adminPass) return res.status(403).json({ error: "Unauthorized" });
+
+      if (useCloud && supabase) {
+        const { data, error } = await supabase.from('inquiries').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        return res.json(data);
+      }
+      const items = db.prepare("SELECT * FROM inquiries ORDER BY created_at DESC").all();
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
-  // Vite middleware for development
+  // --- Production Serving ---
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
+    const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
     app.use(vite.middlewares);
   } else {
     app.use(express.static(path.join(__dirname, "dist")));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "dist/index.html"));
-    });
+    app.get("*", (req, res) => res.sendFile(path.join(__dirname, "dist/index.html")));
   }
 
   const PORT = 3000;
-
-  // Error handling middleware for multer and other errors
-  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error("Server Error:", err);
-    if (err instanceof multer.MulterError) {
-      if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ error: "파일 크기가 너무 큽니다. (최대 100MB)" });
-      }
-      return res.status(400).json({ error: `업로드 오류: ${err.message}` });
-    }
-    res.status(500).json({ error: err.message || "서버 내부 오류가 발생했습니다." });
-  });
-
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    
-    // Persistence Check
-    const dbPath = path.join(__dirname, "portfolio.db");
-    if (fs.existsSync(dbPath)) {
-      const stats = fs.statSync(dbPath);
-      console.log(`[DB CHECK] portfolio.db exists. Size: ${stats.size} bytes`);
-    } else {
-      console.warn("[DB CHECK] portfolio.db NOT FOUND in root!");
-    }
-
-    try {
-      const portfolioSchema = db.prepare("PRAGMA table_info(portfolio)").all();
-      console.log("Portfolio Schema:", JSON.stringify(portfolioSchema, null, 2));
-      const lastItems = db.prepare("SELECT * FROM portfolio ORDER BY id DESC LIMIT 5").all();
-      console.log("Last 5 Items:", JSON.stringify(lastItems, null, 2));
-    } catch (e) {
-      console.error("DB Debug Error:", e);
-    }
+    console.log(`Cloud Mode: ${useCloud ? 'ENABLED' : 'DISABLED (Using SQLite)'}`);
+    console.log(`Cloudinary Mode: ${useCloudinary ? 'ENABLED' : 'DISABLED (Using Local Disk)'}`);
   });
 }
 
