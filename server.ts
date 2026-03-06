@@ -427,6 +427,27 @@ async function startServer() {
     }
   });
 
+  app.delete("/api/admin/inquiries/:id", async (req, res) => {
+    try {
+      const { password } = req.body;
+      const id = req.params.id;
+      const adminPass = process.env.ADMIN_PASSWORD || "1234";
+      
+      if (password !== adminPass) return res.status(403).json({ error: "Unauthorized" });
+
+      if (useCloud && supabase) {
+        const { error } = await supabase.from('inquiries').delete().eq('id', id);
+        if (error) throw error;
+        return res.json({ success: true });
+      }
+
+      db.prepare("DELETE FROM inquiries WHERE id = ?").run(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Error handling middleware
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     console.error("Server Error:", err);

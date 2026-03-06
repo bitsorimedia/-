@@ -831,6 +831,7 @@ const Admin = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleteInquiryConfirm, setDeleteInquiryConfirm] = useState<number | null>(null);
   const [showEdit, setShowEdit] = useState(false);
   const [editingItem, setEditingItem] = useState<PortfolioItem | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -978,6 +979,28 @@ const Admin = () => {
       }
     } catch (error: any) {
       alert(`삭제 중 오류가 발생했습니다: ${error.message}`);
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const handleDeleteInquiry = async (id: number) => {
+    setIsDeleting(id);
+    setDeleteInquiryConfirm(null);
+    try {
+      const response = await fetch(`/api/admin/inquiries/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      if (response.ok) {
+        fetchInquiries();
+      } else {
+        const err = await response.json();
+        alert(`문의 삭제 실패: ${err.error || '알 수 없는 오류'}`);
+      }
+    } catch (error: any) {
+      alert(`삭제 중 오류 발생: ${error.message}`);
     } finally {
       setIsDeleting(null);
     }
@@ -1173,8 +1196,39 @@ const Admin = () => {
             </div>
           ) : (
             inquiries.map(inquiry => (
-              <div key={inquiry.id} className="glass rounded-3xl p-8">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+              <div key={inquiry.id} className="glass rounded-3xl p-8 relative group">
+                <div className="absolute top-8 right-8 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {deleteInquiryConfirm === inquiry.id ? (
+                    <div className="flex items-center gap-2 bg-red-500/10 p-1 rounded-lg border border-red-500/20">
+                      <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest px-2">정말 삭제할까요?</span>
+                      <button 
+                        onClick={() => handleDeleteInquiry(inquiry.id)}
+                        className="p-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+                      >
+                        <CheckCircle2 size={14} />
+                      </button>
+                      <button 
+                        onClick={() => setDeleteInquiryConfirm(null)}
+                        className="p-2 bg-black/10 text-ink/40 rounded-md hover:bg-black/20 transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => setDeleteInquiryConfirm(inquiry.id)}
+                      disabled={isDeleting === inquiry.id}
+                      className="p-3 bg-white/50 hover:bg-red-50 text-ink/20 hover:text-red-500 rounded-xl transition-all border border-black/5"
+                    >
+                      {isDeleting === inquiry.id ? (
+                        <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Trash2 size={18} />
+                      )}
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 pr-12">
                   <div>
                     <h3 className="text-xl font-bold mb-1">{inquiry.name}</h3>
                     <p className="text-sm text-ink/40">{inquiry.email} | {inquiry.phone || '연락처 미기입'}</p>
