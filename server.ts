@@ -102,18 +102,39 @@ async function startServer() {
   app.get("/api/portfolio", async (req, res) => {
     try {
       if (useCloud && supabase) {
-        const { data: portfolio, error } = await supabase
-          .from('portfolio')
-          .select('*, portfolio_images(*)')
-          .order('sort_order', { ascending: true })
+        // Try to fetch with images join first
+        let query = supabase.from('portfolio').select('*, portfolio_images(*)');
+        
+        // Try to order by sort_order if it exists, fallback to created_at
+        const { data: portfolio, error } = await query
           .order('created_at', { ascending: false });
         
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase fetch error:", error);
+          // Fallback: try without images join if it failed due to relationship issues
+          if (error.message.includes("relationship") || error.message.includes("portfolio_images")) {
+            const { data: pOnly, error: pError } = await supabase.from('portfolio').select('*').order('created_at', { ascending: false });
+            if (pError) throw pError;
+            
+            // Fetch images separately for each item
+            const items = await Promise.all(pOnly.map(async (item) => {
+              const { data: images } = await supabase.from('portfolio_images').select('*').eq('portfolio_id', item.id);
+              return { ...item, images: images || [] };
+            }));
+            return res.json(items);
+          }
+          throw error;
+        }
+
         // Map Supabase structure to match local structure
-        const items = portfolio.map(item => ({
+        const items = (portfolio || []).map(item => ({
           ...item,
-          images: item.portfolio_images
+          images: item.portfolio_images || []
         }));
+        
+        // Sort by sort_order manually if it exists in the data
+        items.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        
         return res.json(items);
       }
 
@@ -136,10 +157,20 @@ async function startServer() {
           .from('portfolio')
           .select('*, portfolio_images(*)')
           .eq('id', id)
-          .single();
+          .maybeSingle();
         
-        if (error) return res.status(404).json({ error: "Not found" });
-        return res.json({ ...data, images: data.portfolio_images });
+        if (error) {
+          console.error("Supabase fetch detail error:", error);
+          // Fallback if join fails
+          const { data: pOnly, error: pError } = await supabase.from('portfolio').select('*').eq('id', id).maybeSingle();
+          if (pError || !pOnly) return res.status(404).json({ error: "Not found" });
+          
+          const { data: images } = await supabase.from('portfolio_images').select('*').eq('portfolio_id', id);
+          return res.json({ ...pOnly, images: images || [] });
+        }
+        
+        if (!data) return res.status(404).json({ error: "Not found" });
+        return res.json({ ...data, images: data.portfolio_images || [] });
       }
 
       const item = db.prepare("SELECT * FROM portfolio WHERE id = ?").get(id) as any;
