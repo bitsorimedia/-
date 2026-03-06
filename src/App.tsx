@@ -561,7 +561,7 @@ const Footer = () => {
         </div>
 
         <div className="pt-8 border-t border-black/5 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-ink/30 text-[10px] uppercase tracking-widest">© 2026 빛소리미디어. All rights reserved.</p>
+          <p className="text-ink/30 text-[10px] uppercase tracking-widest">© 2025 빛소리미디어. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <Link to="/admin" className="text-ink/10 hover:text-ink transition-colors"><Lock size={14} /></Link>
           </div>
