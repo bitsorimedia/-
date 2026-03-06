@@ -98,9 +98,6 @@ const Navbar = () => {
               {link.name}
             </a>
           ))}
-          <a href="#contact" className="px-5 py-2 bg-accent text-white text-xs font-bold uppercase tracking-widest rounded-full hover:bg-accent-dark transition-all">
-            프로젝트 문의
-          </a>
           <Link to="/admin" className="p-2 text-ink/40 hover:text-ink transition-colors" title="관리자 페이지">
             <Settings size={20} />
           </Link>
