@@ -175,7 +175,7 @@ const Hero = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="text-5xl md:text-8xl font-bold mb-8 leading-[1.1] tracking-tight text-ink drop-shadow-md"
+          className="text-4xl md:text-6xl font-bold mb-8 leading-[1.1] tracking-tight text-ink drop-shadow-md"
         >
           시선을 머물게 하고,<br />
           마음을 움직이는 영상을<br />
@@ -541,33 +541,6 @@ const Footer = () => {
   );
 };
 
-const StickyFooter = () => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setIsVisible(window.scrollY > 500);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  return (
-    <AnimatePresence>
-      {isVisible && (
-        <motion.div 
-          initial={{ y: 100 }}
-          animate={{ y: 0 }}
-          exit={{ y: 100 }}
-          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40"
-        >
-          <a href="#contact" className="flex items-center gap-3 px-8 py-4 bg-accent text-white rounded-full font-bold uppercase tracking-widest shadow-2xl hover:scale-105 transition-transform whitespace-nowrap">
-            무료 견적 상담하기 <MessageSquare size={18} />
-          </a>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-};
-
 // --- Pages ---
 
 const Home = () => {
@@ -590,7 +563,6 @@ const Home = () => {
       <Testimonials />
       <ContactSection />
       <Footer />
-      <StickyFooter />
     </main>
   );
 };
@@ -1229,21 +1201,6 @@ const Admin = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">과제 및 목표 (Problem)</label>
-                  <textarea name="problem" rows={2} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" placeholder="어떤 문제를 해결하고자 했나요?" />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">해결 과정 및 전략 (Solution)</label>
-                  <textarea name="solution" rows={4} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" placeholder="어떤 전략으로 접근했나요?" />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">성과 및 결과 (Result)</label>
-                  <input name="result" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" placeholder="어떤 성과를 거두었나요?" />
-                </div>
-
-                <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-ink/40">외부 영상 링크 (YouTube / Vimeo - 선택사항)</label>
                   <input name="video_url" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" placeholder="https://www.youtube.com/watch?v=..." />
                 </div>
@@ -1334,21 +1291,6 @@ const Admin = () => {
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-ink/40">외부 영상 링크 (YouTube / Vimeo - 선택사항)</label>
                   <input name="video_url" defaultValue={editingItem.video_url || ''} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" placeholder="https://www.youtube.com/watch?v=..." />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">과제 및 목표 (Problem)</label>
-                  <textarea name="problem" defaultValue={editingItem.problem || ''} rows={2} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">해결 과정 및 전략 (Solution)</label>
-                  <textarea name="solution" defaultValue={editingItem.solution || ''} rows={4} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">성과 및 결과 (Result)</label>
-                  <input name="result" defaultValue={editingItem.result || ''} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none" />
                 </div>
 
                 <p className="text-[10px] text-ink/30">* 수정 시 이미지는 변경할 수 없습니다. 이미지를 변경하려면 삭제 후 다시 등록해주세요.</p>
