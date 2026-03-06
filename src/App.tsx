@@ -150,18 +150,10 @@ const Navbar = () => {
 
 const Hero = () => {
   return (
-    <section className="relative h-screen w-full overflow-hidden flex items-center justify-center">
-      {/* Background Video Overlay */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-white/40 z-10" />
-        <img 
-          src="https://picsum.photos/seed/showreel/1920/1080?blur=2" 
-          className="w-full h-full object-cover"
-          alt="Showreel Background"
-        />
-        {/* In a real app, this would be a <video> tag */}
-      </div>
-
+    <section 
+      className="relative h-screen w-full overflow-hidden flex items-center justify-center bg-zinc-50 bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.75)), url("https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&q=80")' }}
+    >
       <div className="relative z-20 max-w-5xl mx-auto px-6 text-center">
         <motion.p 
           initial={{ opacity: 0, y: 20 }}
@@ -175,7 +167,7 @@ const Hero = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="text-4xl md:text-6xl font-bold mb-8 leading-[1.1] tracking-tight text-ink drop-shadow-md"
+          className="text-[32px] md:text-[54px] font-bold mb-8 leading-[1.1] tracking-tight text-zinc-700 drop-shadow-md"
         >
           시선을 머물게 하고,<br />
           마음을 움직이는 영상을<br />
@@ -230,12 +222,12 @@ const WorkSection = () => {
           <h2 className="text-sm font-bold uppercase tracking-widest text-ink/40 mb-4">Selected Works</h2>
           <h3 className="text-4xl md:text-6xl font-bold tracking-tight">포트폴리오</h3>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
+        <div className="flex flex-wrap gap-3 md:gap-4">
           {categories.map(cat => (
             <button 
               key={cat}
               onClick={() => setFilter(cat)}
-              className={`whitespace-nowrap px-4 py-2 rounded-full border text-xs font-bold uppercase tracking-widest transition-all ${filter === cat ? 'bg-primary text-white border-primary' : 'border-black/10 hover:border-black/30'}`}
+              className={`px-4 py-2 rounded-full border text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all ${filter === cat ? 'bg-primary text-white border-primary' : 'border-black/10 hover:border-black/30'}`}
             >
               {cat}
             </button>
@@ -429,15 +421,18 @@ const ContactSection = () => {
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     
-    await fetch('/api/inquiries', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-
-    setStatus('success');
-    setTimeout(() => setStatus('idle'), 3000);
-    (e.target as HTMLFormElement).reset();
+    try {
+      await fetch('/api/inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      setStatus('success');
+    } catch (error) {
+      console.error('Submission error:', error);
+      setStatus('idle');
+      alert('문의 전송 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
   };
 
   return (
@@ -463,46 +458,81 @@ const ContactSection = () => {
           </div>
         </div>
 
-        <div className="p-10 glass rounded-[2rem]">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-ink/40">Name</label>
-                <input required name="name" type="text" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-black/30 transition-colors" placeholder="홍길동" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-ink/40">Email</label>
-                <input required name="email" type="email" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-black/30 transition-colors" placeholder="example@mail.com" />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-ink/40">Phone</label>
-                <input name="phone" type="tel" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-black/30 transition-colors" placeholder="010-0000-0000" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-ink/40">Budget</label>
-                <select name="budget" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-black/30 transition-colors appearance-none">
-                  <option className="bg-white">협의 필요</option>
-                  <option className="bg-white">100만원 이하</option>
-                  <option className="bg-white">100만원 - 300만원</option>
-                  <option className="bg-white">300만원 이상</option>
-                </select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-ink/40">Message</label>
-              <textarea required name="message" rows={4} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-black/30 transition-colors resize-none" placeholder="의뢰하실 내용을 간략히 적어주세요."></textarea>
-            </div>
-            <button 
-              disabled={status === 'loading'}
-              className="w-full py-4 bg-accent text-white rounded-xl font-bold uppercase tracking-widest hover:bg-accent-dark transition-all flex items-center justify-center gap-2"
-            >
-              {status === 'loading' ? '전송 중...' : status === 'success' ? '전송 완료!' : '문의 보내기'}
-              {status === 'idle' && <ArrowRight size={18} />}
-              {status === 'success' && <CheckCircle2 size={18} />}
-            </button>
-          </form>
+        <div className="p-10 glass rounded-[2rem] flex flex-col justify-center min-h-[400px]">
+          <AnimatePresence mode="wait">
+            {status === 'success' ? (
+              <motion.div 
+                key="success"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center space-y-6"
+              >
+                <div className="w-20 h-20 bg-accent/10 text-accent rounded-full flex items-center justify-center mx-auto mb-6">
+                  <CheckCircle2 size={40} />
+                </div>
+                <h4 className="text-2xl font-bold">신청되었습니다!</h4>
+                <p className="text-ink/60 leading-relaxed">
+                  확인 즉시 연락드리겠습니다.<br />
+                  빛소리미디어를 찾아주셔서 감사합니다.
+                </p>
+                <button 
+                  onClick={() => {
+                    setStatus('idle');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="px-8 py-3 glass rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-black/5 transition-colors"
+                >
+                  확인
+                </button>
+              </motion.div>
+            ) : (
+              <motion.form 
+                key="form"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onSubmit={handleSubmit} 
+                className="space-y-6"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-ink/40">Name</label>
+                    <input required name="name" type="text" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-black/30 transition-colors" placeholder="홍길동" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-ink/40">Email</label>
+                    <input required name="email" type="email" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-black/30 transition-colors" placeholder="example@mail.com" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-ink/40">Phone</label>
+                    <input name="phone" type="tel" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-black/30 transition-colors" placeholder="010-0000-0000" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-ink/40">Budget</label>
+                    <select name="budget" className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-black/30 transition-colors appearance-none">
+                      <option className="bg-white">협의 필요</option>
+                      <option className="bg-white">100만원 이하</option>
+                      <option className="bg-white">100만원 - 300만원</option>
+                      <option className="bg-white">300만원 이상</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-ink/40">Message</label>
+                  <textarea required name="message" rows={4} className="w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-black/30 transition-colors resize-none" placeholder="의뢰하실 내용을 간략히 적어주세요."></textarea>
+                </div>
+                <button 
+                  disabled={status === 'loading'}
+                  className="w-full py-4 bg-accent text-white rounded-xl font-bold uppercase tracking-widest hover:bg-accent-dark transition-all flex items-center justify-center gap-2"
+                >
+                  {status === 'loading' ? '전송 중...' : '문의 보내기'}
+                  {status === 'idle' && <ArrowRight size={18} />}
+                </button>
+              </motion.form>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </section>
@@ -599,7 +629,7 @@ const WorkDetail = () => {
 
       <div className="max-w-5xl mx-auto px-6 py-12">
         <p className="text-sm font-bold uppercase tracking-widest text-ink/40 mb-4">{item.category}</p>
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-12">{item.title}</h1>
+        <h1 className="text-3xl md:text-7xl font-bold tracking-tight mb-12">{item.title}</h1>
         
         <div className="space-y-8 mb-20">
           {item.video_url && (
@@ -846,7 +876,8 @@ const Admin = () => {
         alert('순서가 저장되었습니다.');
         setIsOrderChanged(false);
       } else {
-        alert('순서 저장 실패');
+        const err = await response.json().catch(() => ({}));
+        alert(`순서 저장 실패: ${err.error || '알 수 없는 오류'}`);
       }
     } catch (error) {
       console.error(error);

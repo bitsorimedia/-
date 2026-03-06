@@ -289,13 +289,25 @@ async function startServer() {
       const adminPass = process.env.ADMIN_PASSWORD || "1234";
       if (password !== adminPass) return res.status(403).json({ error: "Unauthorized" });
 
+      console.log(`Updating order for ${orders?.length || 0} items`);
+
       if (useCloud && supabase) {
         for (const item of orders) {
           const { error } = await supabase
             .from('portfolio')
             .update({ sort_order: item.sort_order })
             .eq('id', item.id);
-          if (error) throw error;
+          
+          if (error) {
+            console.error(`Error updating sort_order for item ${item.id}:`, error);
+            // If the error is because the column doesn't exist, we should inform the user
+            if (error.message.includes("column") && error.message.includes("sort_order")) {
+              return res.status(500).json({ 
+                error: "Supabase 'portfolio' 테이블에 'sort_order' 컬럼이 없습니다. SQL Editor에서 'ALTER TABLE portfolio ADD COLUMN sort_order INTEGER DEFAULT 0;'를 실행해주세요." 
+              });
+            }
+            throw error;
+          }
         }
         return res.json({ success: true });
       }
